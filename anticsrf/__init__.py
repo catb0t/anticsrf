@@ -1,1 +1,1 @@
-from .anticsrf import *
+from .__main__ import *

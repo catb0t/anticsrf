@@ -28,7 +28,7 @@ def keyfun_r(keysize, alpha=__import__("string").ascii_lowercase):
         keyfun_r.index = 0
         return
 
-    if keyfun_r.index + keysize > len(alpha):
+    if keyfun_r.index + keysize >= len(alpha):
         slc = alpha[keyfun_r.index:]
         keyfun_r.index = 0
     else:
@@ -199,8 +199,10 @@ class token_clerk():
         '''
             Arguments:  a token (string), and clean (a bool; whether to call
                         clean_expired, default=True)
-            Returns:    True or False, based on whether the given token is in
-                        fact registered and valid
+            Returns:    a dict<string, int> with three keys:
+                            reg: whether the key is currently registered
+                            exp: when the key expires/d or 0 if never was a key
+                            old: whether the key was valid in the past
             Throws:     no
             Effects:    any side effects of clean_expired()
 
@@ -217,20 +219,20 @@ class token_clerk():
         if clean:
             self.clean_expired()
 
-        exist = tok in self.current_tokens
-        old   = tok in self.expired_tokens
-
-        if exist:
+        info = {"reg": False, "exp": 0, "old": False}
+        if tok in self.current_tokens:
             # return True and when it expires
-            exp = self.current_tokens[tok]
-            return exp > microtime(), exp
-        elif old:
-            # return False and when it expired
-            old_exp = self.expired_tokens[tok]
-            return False, old_exp
-        else:
-            # return False and 0
-            return False, 0
+            info = {
+                "reg": True,
+                "exp": self.current_tokens[tok],
+                "old": False
+            }
+        elif tok in self.expired_tokens:
+            info.update(
+                { "old": True, "exp": self.expired_tokens[tok] }
+            )
+
+        return info
 
     def _log_expired_tokens(self, tokens):
         '''

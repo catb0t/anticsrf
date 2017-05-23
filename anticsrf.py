@@ -43,7 +43,7 @@ def keyfun_r(keysize, alpha=__import__("string").ascii_lowercase):
 
 class token_clerk():
     '''
-        Arguments:  preset_tokens: a tuple<string, int>, default: empty
+        Arguments:  preset_tokens: a mapping<string, int>, default: empty
                     expire_after:  int (microseconds),  3600000000 (1 hour)
                     keysize:       int (token length),  42
                     keyfunc:       func<int> -> str[keysize]

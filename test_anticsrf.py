@@ -27,7 +27,7 @@ class TestAntiCSRF(unittest.TestCase):
         self.assertTrue(len(t.expired_tokens) == 0)
         self.assertTrue(all(x in t.current_tokens for x in [toka, tokb]))
 
-        ct   = t.unregister(toka, tokb)
+        ct   = t.unregister(toka, tokb, clean=False)
 
         self.assertTrue(all(x not in t.current_tokens for x in [toka, tokb]))
         self.assertTrue(all(x in t.expired_tokens for x in [toka, tokb]))
@@ -36,7 +36,7 @@ class TestAntiCSRF(unittest.TestCase):
     def test_unregister_all(self):
         t    = anticsrf.token_clerk()
         toks = [t.register_new()["tok"] for i in range(10)]
-        ct   = t.unregister_all()
+        ct   = t.unregister(clr=True, clean=False)
         self.assertEqual(10, ct)
 
         self.assertFalse(all(tok in t.current_tokens for tok in toks))
@@ -51,13 +51,15 @@ class TestAntiCSRF(unittest.TestCase):
         self.assertFalse(all(tok in t.current_tokens for tok in toks))
         self.assertTrue( all(tok in t.expired_tokens for tok in toks))
 
-    def test_is_registered(self):
+    def test_is_valid(self):
         t    = anticsrf.token_clerk()
         toks = [t.register_new()["tok"] for i in range(10)]
 
-        self.assertTrue(all( t.is_registered(tok)  for tok in toks ) )
+        self.assertTrue(all( t.is_valid(tok, clean=False)  for tok in toks ) )
         # False + 0 = 0 -- these were never registered
-        self.assertTrue(0 == sum( sum(t.is_registered(junk)) for junk in ["abc", "cat", "def"])) # noqa
+        for junk in ["abc", "cat", "def", "notakey", "ab"]:
+            ji = t.is_valid(junk, clean=False)
+            self.assertEqual(ji, {"old": False, "exp": 0, "reg": False})
 
     def test_was_registered(self):
         t    = anticsrf.token_clerk(expire_after=0)
@@ -67,9 +69,9 @@ class TestAntiCSRF(unittest.TestCase):
 
         # these were registered and their expiry times should be preserved
         for tok in toks:
-            isreg, expd = t.is_registered(tok["tok"])
-            self.assertFalse(isreg)
-            self.assertTrue( expd == tok["exp"])
+            info = t.is_valid(tok["tok"], clean=False)
+            self.assertEqual(
+                info, {"old": True, "exp": tok["exp"], "reg": False})
 
     def test_roundtrips(self):
         from anticsrf import token_clerk, keyfun_r
@@ -87,8 +89,7 @@ def suiteFactory(
         *testcases,
         testSorter   = None,
         suiteMaker   = unittest.makeSuite,
-        newTestSuite = unittest.TestSuite
-    ):
+        newTestSuite = unittest.TestSuite):
     """
     make a test suite from test cases, or generate test suites from test cases.
 
@@ -113,8 +114,7 @@ def caseFactory(
         scope        = globals().copy(),
         caseSorter   = lambda f: __import__("inspect").findsource(f)[1],
         caseSuperCls = unittest.TestCase,
-        caseMatches  = __import__("re").compile("^Test")
-    ):
+        caseMatches  = __import__("re").compile("^Test")):
     """
     get TestCase-y subclasses from frame "scope", filtering name and attribs
 
@@ -132,8 +132,8 @@ def caseFactory(
     return sorted(
         [
             scope[obj] for obj in scope
-                if match(caseMatches, obj)
-                and issubclass(scope[obj], caseSuperCls)
+            if match(caseMatches, obj)
+            and issubclass(scope[obj], caseSuperCls)
         ],
         key=caseSorter
     )

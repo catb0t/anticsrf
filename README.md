@@ -1,4 +1,6 @@
-# antiCSRF | anticsrf.py
+# antiCSRF | anticsrf.py 
+[![Build Status](https://travis-ci.org/catb0t/anticsrf.svg?branch=master)](https://travis-ci.org/catb0t/anticsrf)
+
 
 ---
 

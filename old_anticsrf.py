@@ -1,6 +1,11 @@
 import api_helper  # from api_helper import microtime, random_key
 import threading
 
+if __name__ != '__main__':
+    print("deprecated! use anticsrf.py instead")
+    raise DeprecationWarning()
+    exit(3)
+
 '''
     Very basic anti-cross site request forgery token validation scheme.
     For use with low-traffic, low-risk JSON APIs.
@@ -64,6 +69,7 @@ def expire_1_token(tok):
     # also check for other expired tokens
     return 1 + clean_expired()
 
+
 def expire_all_tokens():
     '''
         Arguments:  none
@@ -77,6 +83,7 @@ def expire_all_tokens():
     with lock:
         ANTICSRF_REGISTER = {}
     return ol
+
 
 def clean_expired():
     '''

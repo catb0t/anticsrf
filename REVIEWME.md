@@ -1,3 +1,20 @@
+## AntiCSRF: simple CSRF token management for server APIs
+
+I've been working on a [full](http://github.com/mineralsprings/mineralsprings.github.io) [stack](http://github.com/mineralsprings/json-api-host) web application for a school project, and I wrote antiCSRF to prevent Cross-Site Request Forgery attacks., and to differentiate between users who have authenticated once with arbitrary anonymous requests.
+
+The [original implementation (v0.0.1)](https://github.com/catb0t/anticsrf/blob/master/old_anticsrf.py) was very short, and used a module-global token register, instead of a class, and reflected how little I understood threading and the GIL in Python.
+
+The [second generation of antiCSRF](https://github.com/catb0t/anticsrf/blob/master/anticsrf.py) (which I deem v0.1 because I *think* it's kinda stable) is about 400 lines with docstrings and comments in. The continued use of `threading.Lock` almost definitely continues to reflect how little I understand Python's threading, but it's in there just to be safe with threaded code. for which this is explicity intended.
+
+The implementation consists of 4 helper functions (of which only 1 is essential) and 1 class, `token_clerk`, which is where it all goes down.
+
+One of the first pieces of code I've "designed" in a while, the `token_clerk` keeps track of currently valid *and* recently expired CSRF tokens, as well as providing metadata and "lower-level" functions for more customisation of the API.
+
+Specify your own key function, key length and expiry time, or don't, and use the reasonable defaults.
+
+**anticsrf.py**
+
+```py
 #!/usr/bin/env python3
 import time
 import threading
@@ -369,8 +386,74 @@ class token_clerk():
             self.keysize,
             pprint.pformat(self.expired_tokens)
         )
+```
+
+There are [unit-tests](https://github.com/catb0t/anticsrf/blob/master/test_anticsrf.py), but I'll omit them for brevity.
+
+Most interesting to the reader is probably a usage example, so here you go:
+
+```py
+#!/usr/bin/env python3
+from http.server  import BaseHTTPRequestHandler, HTTPServer
+from json         import dumps
+from socketserver import ThreadingMixIn
+from urllib       import parse
+
+import anticsrf
+
+t = anticsrf.token_clerk(
+    keysize=6,
+    keyfunc=anticsrf.random_key,
+    expire_after=1e7
+)
 
 
-if __name__ == '__main__':
-    t = token_clerk()
-    x = eval(repr(t))
+class Server(BaseHTTPRequestHandler):
+    def do_GET(self):
+        po = parse.urlparse(self.path)
+        qs = dict(parse.parse_qsl(po.query))
+
+        if "action" not in qs:
+            self.send_error(400)
+            return
+
+        self.send_response(200)
+        self.end_headers()
+
+        res = {}
+        if qs["action"] == "new":
+            res = t.register_new()
+        elif qs["action"] == "valid":
+            res = t.is_valid(qs["tok"])
+
+        self.wfile.write(bytes(dumps(res), "utf-8"))
+
+# action=new
+# {"tok": "760d40", "exp": 1497098237605895.0, "iat": 1497098227605895}
+# within t.expire_after microseconds
+# action=valid&key=760d40
+# {"exp": 1497098270397330.0, "reg": false, "old": false}
+# more than t.expire_after microseconds later
+# {"exp": 1497098270397330.0, "reg": false, "old": false}
+# restart the server
+# action=valid&key=760d40
+# {"reg": false, "old": false, "exp": 0}
+
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+
+
+if __name__ == "__main__":
+    port = 9960
+    server_address = ("", port)
+    httpd = ThreadedHTTPServer(server_address, Server)
+
+    print("Starting httpd on port {}...".format(port))
+
+    httpd.serve_forever()
+```
+
+This scalably-threaded server has endpoints at `localhost:9960/?action=new` and `localhost:9960/?action=valid&tok=YOUR_TOK`. This is just an example of how to use antiCSRF and **you should never ever keep reusable, long-living secrets in your users' browser history**. In the real world, instead of negotiating over `GET`, use `POST` with JSON or URLEncoded data, like [me](https://github.com/mineralsprings/json-api-host/blob/master/server.py).
+
+I'd especially appreciate guidance on improving the threadsafe aspect of the library, but of course all recommendations and criticisms are appreciated.

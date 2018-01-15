@@ -432,9 +432,9 @@ class Server(BaseHTTPRequestHandler):
 # {"tok": "760d40", "exp": 1497098237605895.0, "iat": 1497098227605895}
 # within t.expire_after microseconds
 # action=valid&key=760d40
-# {"exp": 1497098270397330.0, "reg": false, "old": false}
+# {"exp": 1497098270397330.0, "reg": true, "old": false}
 # more than t.expire_after microseconds later
-# {"exp": 1497098270397330.0, "reg": false, "old": false}
+# {"exp": 1497098270397330.0, "reg": false, "old": true}
 # restart the server
 # action=valid&key=760d40
 # {"reg": false, "old": false, "exp": 0}
@@ -457,3 +457,5 @@ if __name__ == "__main__":
 This scalably-threaded server has endpoints at `localhost:9960/?action=new` and `localhost:9960/?action=valid&tok=YOUR_TOK`. This is just an example of how to use antiCSRF and **you should never ever keep reusable, long-living secrets in your users' browser history**. In the real world, instead of negotiating over `GET`, use `POST` with JSON or URLEncoded data, like [me](https://github.com/mineralsprings/json-api-host/blob/master/server.py).
 
 I'd especially appreciate guidance on improving the threadsafe aspect of the library, but of course all recommendations and criticisms are appreciated.
+
+Finally, I fully expect to be told this is an insecure and wrong implementation, so tell me how I can write it better from an internet security perspective.

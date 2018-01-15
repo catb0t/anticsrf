@@ -50,7 +50,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 if __name__ == "__main__":
-    port = 9960
+    port = 80
     server_address = ("", port)
     httpd = ThreadedHTTPServer(server_address, Server)
 

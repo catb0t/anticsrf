@@ -31,7 +31,7 @@ def microtime():
 def random_key(keysize):
     from os       import urandom
     from binascii import hexlify
-    return hexlify(urandom(keysize)).decode("ascii")[keysize:]
+    return hexlify(urandom(keysize // 2)).decode("ascii")
 
 
 def _static_vars(**kwargs):

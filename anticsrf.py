@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import time
-import threading
 
 # 1 hour in microseconds
 DEFAULT_EXPIRY = (10**6) * 60 * 60
@@ -97,6 +96,7 @@ class token_clerk():
         # for roundtripping:
         **kwargs
     ):
+        import threading
         # currently valid tokens
         self.current_tokens = dict(preset_tokens)
         # keep some expired tokens (TODO: make sure this is trashed routinely)
@@ -107,6 +107,7 @@ class token_clerk():
         self.keysize        = keysize
         # custom key generator function
         self.keyfunc        = keyfunc
+        self.Lock           = threading.Lock()
 
     def register_new(self, clean=True):
         '''
@@ -148,7 +149,7 @@ class token_clerk():
         expd = 0
         if clr:
             expd = len(self.current_tokens)
-            with threading.Lock():
+            with self.lock:
                 self._log_expired_tokens(self.current_tokens.copy())
                 self.current_tokens = dict()
             return expd
@@ -170,7 +171,7 @@ class token_clerk():
             if t in self.current_tokens:
                 expd += 1
                 expire.update( { t: self.current_tokens[t] } )
-                with threading.Lock():
+                with self.lock:
                     del self.current_tokens[t]
 
         self._log_expired_tokens(expire)
@@ -202,7 +203,7 @@ class token_clerk():
             # print(tok, now, exp, exp - now, now >= exp)
             if now >= exp:
                 # print("expiring token", tok, "from", exp)
-                with threading.Lock():
+                with self.lock:
                     expire.update({tok: exp})
                     del self.current_tokens[tok]
 
@@ -307,7 +308,7 @@ class token_clerk():
             info = self.is_valid(tok)
             if info["old"] and not info["reg"]:
                 res[tok] = self._register(tok, expire_after=expire_after)
-                with threading.Lock():
+                with self.lock:
                     del self.expired_tokens[tok]
         return res
 
@@ -336,7 +337,7 @@ class token_clerk():
 
         now = microtime()
         exp = now + expire_after
-        with threading.Lock():
+        with self.lock:
             self.current_tokens[tok] = exp
 
         return {"tok": tok, "iat": now, "exp": exp}
@@ -351,7 +352,7 @@ class token_clerk():
             Record tokens that have expired in another dictionary.
         '''
         self._clear_expired_kept(trash=len(tokens))
-        with threading.Lock():
+        with self.lock:
             self.expired_tokens.update(tokens)
 
     def _clear_expired_kept(self, trash=30):
@@ -364,7 +365,7 @@ class token_clerk():
             Trash the oldest kept-expired tokens.
         '''
         stoks = sorted(self.expired_tokens.items(), key=lambda x: x[1])
-        with threading.Lock():
+        with self.lock:
             self.expired_tokens = dict(stoks[trash:])
 
     def __repr__(self):

@@ -7,7 +7,7 @@ from urllib       import parse
 import anticsrf
 
 t = anticsrf.token_clerk(
-    keysize=6,
+    keysize=8,
     keyfunc=anticsrf.random_key,
     expire_after=1e8
 )
@@ -29,6 +29,9 @@ class Server(BaseHTTPRequestHandler):
         if qs["action"] == "new":
             res = t.register_new()
         elif qs["action"] == "valid":
+            if "key" not in qs:
+                self.send_error(400)
+                return
             res = t.is_valid(qs["key"])
 
         self.wfile.write(bytes(dumps(res), "utf-8"))
@@ -45,15 +48,28 @@ class Server(BaseHTTPRequestHandler):
 # {"reg": false, "old": false, "exp": 0}
 
 
+class QuietServer(Server):
+    "ssshhhh!"
+    def log_message(*args):
+        pass
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
 
-if __name__ == "__main__":
-    port = 8090
+def example_main(port, count_reqs=1, quiet=False):
     server_address = ("", port)
-    httpd = ThreadedHTTPServer(server_address, Server)
+    if quiet:
+        httpd = ThreadedHTTPServer(server_address, QuietServer)
+    else:
+        httpd = ThreadedHTTPServer(server_address, Server)
 
     print("Starting httpd on port {}...".format(port))
 
-    httpd.serve_forever()
+    for i in range(count_reqs):
+        httpd.handle_request()
+
+
+if __name__ == '__main__':
+    example_main(8090, count_reqs=100, quiet=True)

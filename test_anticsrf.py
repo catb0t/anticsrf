@@ -86,4 +86,50 @@ class TestAntiCSRF(unittest.TestCase):
         self.assertTrue(t.__class__ == x.__class__)
 
 
+class TestExampleServer(unittest.TestCase):
+
+    def test_server(self):
+        from example import example_main
+        import example
+        import threading
+        import json
+        import requests
+        import sys
+        count_reqs = 1000
+        sl = .06
+        port = 9962
+        em = lambda: example_main(port, count_reqs=count_reqs * 2, quiet=True)
+        server_thread = threading.Thread(target=em)
+        server_thread.start()
+        time.sleep(0)
+        print()
+
+        def make_request():
+            new_raw = requests.get("http://localhost:" + str(port) + "/?action=new") # noqa
+            time.sleep(0)
+            new = json.loads(new_raw.text)
+
+            now = anticsrf.microtime()
+            check_raw = requests.get(
+                "http://localhost:" + str(port) + "/?action=valid&key=" + new["tok"] # noqa
+            )
+            time.sleep(0)
+            check = json.loads(check_raw.text)
+            sys.stdout.write("       " + str(i + 1) + "     requests\r")
+            sys.stdout.flush()
+            if now < new["exp"]:
+                self.assertTrue(check["reg"])
+                self.assertTrue(not check["old"])
+                self.assertTrue(example.t.is_valid(new["tok"]))
+            else:
+                self.assertTrue(not check["reg"])
+                self.assertTrue(check["old"])
+                self.assertTrue(not example.t.is_valid(new["tok"]))
+
+        for i in range(count_reqs):
+            r = threading.Thread(target=make_request)
+            r.start()
+            time.sleep(sl)
+
+
 unittest_sorter.main(scope=globals().copy())

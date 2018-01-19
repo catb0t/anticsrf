@@ -9,7 +9,7 @@ import anticsrf
 t = anticsrf.token_clerk(
     keysize=6,
     keyfunc=anticsrf.random_key,
-    expire_after=1e7
+    expire_after=1e8
 )
 
 
@@ -29,7 +29,7 @@ class Server(BaseHTTPRequestHandler):
         if qs["action"] == "new":
             res = t.register_new()
         elif qs["action"] == "valid":
-            res = t.is_valid(qs["tok"])
+            res = t.is_valid(qs["key"])
 
         self.wfile.write(bytes(dumps(res), "utf-8"))
 
@@ -50,7 +50,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 if __name__ == "__main__":
-    port = 80
+    port = 8090
     server_address = ("", port)
     httpd = ThreadedHTTPServer(server_address, Server)
 

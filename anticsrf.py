@@ -107,7 +107,7 @@ class token_clerk():
         self.keysize        = keysize
         # custom key generator function
         self.keyfunc        = keyfunc
-        self.Lock           = threading.Lock()
+        self.lock           = threading.Lock()
 
     def register_new(self, clean=True):
         '''
@@ -203,8 +203,8 @@ class token_clerk():
             # print(tok, now, exp, exp - now, now >= exp)
             if now >= exp:
                 # print("expiring token", tok, "from", exp)
+                expire.update({tok: exp})
                 with self.lock:
-                    expire.update({tok: exp})
                     del self.current_tokens[tok]
 
         self._log_expired_tokens(expire)
@@ -352,8 +352,7 @@ class token_clerk():
             Record tokens that have expired in another dictionary.
         '''
         self._clear_expired_kept(trash=len(tokens))
-        with self.lock:
-            self.expired_tokens.update(tokens)
+        self.expired_tokens.update(tokens)
 
     def _clear_expired_kept(self, trash=30):
         '''
@@ -365,8 +364,7 @@ class token_clerk():
             Trash the oldest kept-expired tokens.
         '''
         stoks = sorted(self.expired_tokens.items(), key=lambda x: x[1])
-        with self.lock:
-            self.expired_tokens = dict(stoks[trash:])
+        self.expired_tokens = dict(stoks[trash:])
 
     def __repr__(self):
         '''

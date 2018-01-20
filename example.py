@@ -64,12 +64,11 @@ def example_main(port, count_reqs=1, quiet=False):
         httpd = ThreadedHTTPServer(server_address, QuietServer)
     else:
         httpd = ThreadedHTTPServer(server_address, Server)
-
-    print("Starting httpd on port {}...".format(port))
+        print("Starting httpd on port {}...".format(port))
 
     for i in range(count_reqs):
         httpd.handle_request()
 
 
 if __name__ == '__main__':
-    example_main(8090, count_reqs=100, quiet=True)
+    example_main(8090, count_reqs=100, quiet=False)
